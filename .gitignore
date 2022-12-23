@@ -134,4 +134,4 @@ dmypy.json
 # zip and avi files
 *.zip
 *.avi
-*/78645636/*
+**/data/**
