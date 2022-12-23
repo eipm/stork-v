@@ -17,9 +17,14 @@ Add the zip file in the expeted location `src/data/78645636.zip` and run the com
 
 ## Docker run command
 
+
 ```
+PATH_TO_MODELS=<set the location of your models directory>
+PATH_TO_DATA=<set the location of you data directory>
+
 docker run --name stork-v \
--v /root/Repos/stork-v/src/stork_v/models:/stork-v/src/stork_v/models \
+-v $PATH_TO_MODELS:/stork-v/stork_v/models \
+-v $PATH_TO_DATA:/stork-v/data \
 -e USERS_DICT="{'user1': 'stork'}" \
 -p 8080:80 \
 stork-v

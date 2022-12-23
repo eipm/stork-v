@@ -168,7 +168,8 @@ class Stork:
         input_data = StorkData(new_features, new_masks)
         
         # #### Script for Running Model on Data
-        MODELS_FOLDER_PATH = os.path.join('src', 'stork_v', 'models')
+        current_file_dir = os.path.dirname(os.path.realpath(__file__))
+        MODELS_FOLDER_PATH = os.path.join(current_file_dir, 'models')
         BS_MODEL_PATH = os.path.join(MODELS_FOLDER_PATH, "BILSTM Model")
         LR_EUP_ANU_MODEL_PATH = os.path.join(MODELS_FOLDER_PATH, "EUP_ANU_LR Model")
         LR_EUP_CXA_MODEL_PATH = os.path.join(MODELS_FOLDER_PATH, "EUP_CxA_LR Model")
