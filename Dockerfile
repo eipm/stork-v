@@ -2,7 +2,7 @@ FROM python:3.8.16-slim
 #===============================#
 # Docker Image Configuration	#
 #===============================#
-LABEL org.opencontainers.image.source='https://github.com/eipm/stork-a' \
+LABEL org.opencontainers.image.source='https://github.com/eipm/stork-v' \
     vendor='Englander Institute for Precision Medicine' \
     description='STORK-V' \
     maintainer='paz2010@med.cornell.edu' \
