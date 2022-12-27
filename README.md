@@ -21,10 +21,12 @@ Add the zip file in the expeted location `src/data/78645636.zip` and run the com
 ```
 PATH_TO_MODELS=<set the location of your models directory>
 PATH_TO_DATA=<set the location of you data directory>
+PATH_TO_TEMP=<set the location of the temp directory used for creating the videos>
 
 docker run --name stork-v \
 -v $PATH_TO_MODELS:/stork-v/stork_v/models \
 -v $PATH_TO_DATA:/stork-v/data \
+-v $PATH_TO_TEMP:/stork-v/temp \
 -e USERS_DICT="{'user1': 'stork'}" \
 -p 8080:80 \
 stork-v
