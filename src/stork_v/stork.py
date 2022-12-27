@@ -1,3 +1,5 @@
+import pathlib
+import uuid
 import pandas as pd
 import numpy as np
 import os
@@ -53,7 +55,8 @@ class Stork:
         return [os.path.join(images_folder, image) for image in images]
 
     def predict_zip_file(
-        self, zip_file_path: str,
+        self,
+        zip_file_path: str,
         images_folder_path_in_zip: str = '',
         focus = 0
         ) -> StorkResult:
@@ -79,8 +82,11 @@ class Stork:
         video_path = os.path.join(target_directory, video_name)
         # Checking if there is at minimum 10 images in the input
         if len(image_paths) > self.MINIMUM_NUMBER_OF_IMAGES:
-            create_video(video_path, image_paths, num_frames_from_back=None)
-
+            current_file_dir = os.path.dirname(os.path.realpath(__file__))
+            temp_video_path = os.path.join(current_file_dir, '..', 'temp', str(uuid.uuid4()), video_name )
+            pathlib.Path(os.path.dirname(temp_video_path)).mkdir(parents=True, exist_ok=True)
+            create_video(temp_video_path, image_paths, num_frames_from_back=None)
+            os.rename(temp_video_path, video_path)
         # ### Feature Extraction for Model Input
 
         # #### Script for Feature Extraction
