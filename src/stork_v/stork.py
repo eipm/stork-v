@@ -1,4 +1,5 @@
 import pathlib
+import shutil
 import uuid
 import pandas as pd
 import numpy as np
@@ -83,10 +84,13 @@ class Stork:
         # Checking if there is at minimum 10 images in the input
         if len(image_paths) > self.MINIMUM_NUMBER_OF_IMAGES:
             current_file_dir = os.path.dirname(os.path.realpath(__file__))
-            temp_video_path = os.path.join(current_file_dir, '..', 'temp', str(uuid.uuid4()), video_name )
+            temp_video_dir = current_file_dir, '..', 'temp', str(uuid.uuid4())
+            temp_video_path = os.path.join(temp_video_dir, video_name)
             pathlib.Path(os.path.dirname(temp_video_path)).mkdir(parents=True, exist_ok=True)
+            
             create_video(temp_video_path, image_paths, num_frames_from_back=None)
-            os.rename(temp_video_path, video_path)
+            shutil.copy(temp_video_path, video_path)
+            shutil.rmtree(temp_video_dir)
         # ### Feature Extraction for Model Input
 
         # #### Script for Feature Extraction
