@@ -30,6 +30,7 @@ EXPOSE 80
 ENV PATH=$PATH:/${APP_NAME}
 ENV PYTHONPATH /${APP_NAME}
 VOLUME /${APP_NAME}/data
+VOLUME /${APP_NAME}/temp
 VOLUME /${APP_NAME}/stork_v/models
 
 HEALTHCHECK --interval=30s --timeout=30s --retries=3 \
