@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from stork_v.experiment_result import *
+from stork_v.dataclasses.experiment_result import *
 
 @dataclass
 class StorkResult:

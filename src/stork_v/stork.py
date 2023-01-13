@@ -7,27 +7,21 @@ import os
 import os.path
 import pickle
 from tensorflow import keras
+from typing import List
 
 from stork_v.image_processing import *
-from stork_v.experiment_result import *
-from stork_v.stork_data import *
-from stork_v.stork_result import *
+from stork_v.dataclasses.experiment_result import *
+from stork_v.dataclasses.stork_data import *
+from stork_v.dataclasses.stork_result import *
+from stork_v.dataclasses.stork_image import *
 from os.path import exists
 
 # In case the zip file has more than 0-focus images, this function only gets the 0-focus images
 ## Requires focus annotation (XXXX_0.jpg where 0 is indicative of 0 focus)
-def create_image_lists(images: Sequence[str]) -> Sequence[str]:
-    return [image for image in images if image.endswith("_0.jpg")]
-
-def get_image_paths_from_folder(images_folder) -> Sequence[str]:
-    extracted_file_names = os.listdir(images_folder)
-
-    images = create_image_lists(extracted_file_names)
-    image_paths = [os.path.join(images_folder, image) for image in images]
-    return image_paths
 
 
 class Stork:
+    IMG_SIZE = 224
     MINIMUM_NUMBER_OF_IMAGES = 10
     MAX_SEQ_LENGTH = 710
     NUM_FEATURES = 512
@@ -36,85 +30,79 @@ class Stork:
     beg_hour = 96.0
     end_hour = 112.0
 
-    def get_images_from_zip(
-        self,
-        zip_file_path: str, 
-        images_folder_path_in_zip: str = '') -> Sequence[str]:
-        
-        zip_file_name = os.path.basename(zip_file_path)
-        zip_file_name_without_extension = os.path.splitext(zip_file_name)[0]
-        
-        target_directory = os.path.join(
-            os.path.dirname(os.path.realpath(zip_file_path)),
-            zip_file_name_without_extension)
-        extract_zip(zip_file_path, target_directory)
-
-        images_folder = os.path.join(target_directory, images_folder_path_in_zip)
-        extracted_file_names = os.listdir(images_folder)
-
-        images = create_image_lists(extracted_file_names)
-        return [os.path.join(images_folder, image) for image in images]
-
-    def predict_zip_file(
-        self,
-        zip_file_path: str,
-        images_folder_path_in_zip: str = '',
-        focus = 0
-        ) -> StorkResult:
-        
-        # Creating video from zip file
-        zip_file_name = os.path.basename(zip_file_path)
-        zip_file_name_without_extension = os.path.splitext(zip_file_name)[0]
-
-
-        target_directory = os.path.join(
-            os.path.dirname(os.path.realpath(zip_file_path)),
-            zip_file_name_without_extension)
-        # extract_zip(zip_file_path, target_directory)
-
-        # images_folder = os.path.join(target_directory, images_folder_path_in_zip)
-        # extracted_file_names = os.listdir(images_folder)
-
-        # images = create_image_lists(extracted_file_names)
-        # image_paths = [os.path.join(images_folder, image) for image in images]
-        image_paths = self.get_images_from_zip(zip_file_path, images_folder_path_in_zip)
-
-        video_name = zip_file_name_without_extension + "_" + str(focus) + '.avi'
-        video_path = os.path.join(target_directory, video_name)
-        # Checking if there is at minimum 10 images in the input
-        if len(image_paths) > self.MINIMUM_NUMBER_OF_IMAGES:
-            current_file_dir = os.path.dirname(os.path.realpath(__file__))
-            temp_video_dir = os.path.join(current_file_dir, '..', 'temp', str(uuid.uuid4()))
-            temp_video_path = os.path.join(temp_video_dir, video_name)
-            pathlib.Path(os.path.dirname(temp_video_path)).mkdir(parents=True, exist_ok=True)
+    def create_image_list(self, image_paths: Sequence[str]) -> List[StorkImage]:
+        stork_images = []
+        for image_path in image_paths:
+            filename = os.path.basename(image_path)
+            filename_no_extension_split = os.path.splitext(filename)[0].split('_')
+            if len(filename_no_extension_split) != 5:
+                continue
             
-            create_video(temp_video_path, image_paths, num_frames_from_back=None)
-            shutil.copy(temp_video_path, video_path)
-            shutil.rmtree(temp_video_dir)
+            # can raise exception if image filename is not in the correct format    
+            hour = float(filename_no_extension_split[2])
+            focus =  int(filename_no_extension_split[4]) 
+
+            if focus == 0 and self.beg_hour - 1 < hour < self.end_hour + 1:
+                stork_images.append(
+                    StorkImage(
+                        focus=focus,
+                        hour=hour,
+                        filename=filename,
+                        directory=os.path.dirname(image_path)
+                        )
+                    )
+        return stork_images
+
+    def predict(
+        self,
+        image_paths: List[str],
+        maternal_age: float,
+        subject_no: str,
+        temp_directory: str,
+        focus = 0) -> StorkResult:
+        
+        stork_images = self.create_image_list(image_paths)
+        stork_images.sort(key=lambda x: x.hour)
+
+        if len(stork_images) < self.MINIMUM_NUMBER_OF_IMAGES:
+            raise ValueError("Not enough images provided")
+        
+        video_name = "video_" + str(focus) + '.avi'
+        video_path = os.path.join(temp_directory, video_name)
+        # Checking if there is at minimum 10 images in the input
+
+        current_file_dir = os.path.dirname(os.path.realpath(__file__))
+        temp_video_dir = os.path.join(current_file_dir, '..', 'temp', str(uuid.uuid4()))
+        temp_video_path = os.path.join(temp_video_dir, video_name)
+        pathlib.Path(os.path.dirname(temp_video_path)).mkdir(parents=True, exist_ok=True)
+                
+        create_video(temp_video_path, stork_images, num_frames_from_back=None)
+        shutil.copy(temp_video_path, video_path)
+        shutil.rmtree(temp_video_dir)
         # ### Feature Extraction for Model Input
 
         # #### Script for Feature Extraction
         # Reads in video and then passes the frames through a pre-trained feature extactor to get features for each frame
 
         # Creating Dataframe
-        df_stages = create_dataframe(
-            [os.path.basename(x) for x in image_paths],
-            zip_file_name
-            )
+        image_intervals = list(map(lambda stork_image: stork_image.hour, stork_images))
+    
+        df_stages = create_dataframe(image_intervals, subject_no, maternal_age)
 
-        return self.predict_video(video_path, df_stages)
+    #     return self.predict_video(video_path, df_stages)
 
-    def predict_video(self, video_path: str, df_stages: pd.DataFrame) -> StorkResult:
+
+    # def predict_video(self, video_path: str, df_stages: pd.DataFrame) -> StorkResult:
         if not exists(video_path): 
             raise ValueError("no file can be found")
 
-        frames = load_video(video_path, (IMG_SIZE, IMG_SIZE))
+        frames = load_video(video_path, self.MAX_SEQ_LENGTH, (self.IMG_SIZE, self.IMG_SIZE))
         # Frames shape: (num_frames, height, width, color channels)
         frames = frames[None, ...]
         # Frames shape: (extra_batch_dim, num_frames, height, width, color channels)
 
         # Initializing pre-trained feature extractor
-        feature_extractor = build_feature_extractor()
+        feature_extractor = build_feature_extractor(self.IMG_SIZE)
 
         # `frame_masks` and `frame_features` are what we will feed to our sequence model.
         # `frame_masks` will contain a bunch of booleans denoting if a timestep is
@@ -218,3 +206,34 @@ class Stork:
             te_pred[0][0].item(),
             probs[0].item(),
             y_pred_coded[0].item() == True)
+        
+    def predict_zip_file(
+        self,
+        zip_file_path: str,
+        images_folder_path_in_zip: str = '',
+        focus = 0
+        ) -> StorkResult:
+        
+        # Creating video from zip file
+        zip_file_name = os.path.basename(zip_file_path)
+        zip_file_name_without_extension = os.path.splitext(zip_file_name)[0]
+
+        target_directory = os.path.join(
+            os.path.dirname(os.path.realpath(zip_file_path)),
+            zip_file_name_without_extension)
+
+        image_paths = self.get_images_from_zip(zip_file_path, target_directory, images_folder_path_in_zip)
+        return self.predict(image_paths, maternal_age=30, subject_no=zip_file_name, temp_directory=target_directory, focus=0)
+        
+    def get_images_from_zip(
+        self,
+        zip_file_path: str, 
+        target_directory: str,
+        images_folder_path_in_zip: str = '') -> List[str]:
+        
+        extract_zip(zip_file_path, target_directory)
+
+        images_directory = os.path.join(target_directory, images_folder_path_in_zip)
+        image_paths = [os.path.join(images_directory, image) for image in os.listdir(images_directory)]
+
+        return image_paths
