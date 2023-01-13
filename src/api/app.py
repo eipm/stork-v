@@ -77,28 +77,36 @@ def predict():
             auth_header.split(" ")[1] is None:
         abort(401, 'No Authorization header or authorization failed')
 
-    # # check if the post request has the file part
-    if 'zipFile' not in request.files:
-        abort(400, 'No file part')
+    data = json.loads(request.form['data'])
+    
+    if data is None:
+        abort(400, 'No data part')
 
+    maternal_age =  float(data['maternalAge'])
+
+    # # check if the post request has the file part
+    if 'images' not in request.files:
+        abort(400, 'No images part')
+
+    if len(request.files.getlist('images')) < 10:
+        abort(400, 'A single file is required')
+        
     # 1. Create request directory
     request_id = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
     request_dir = (os.path.join(upload_dir, request_id))
     pathlib.Path(request_dir).mkdir(parents=True, exist_ok=True)
 
+    image_paths = []
     # For each uploaded image
-    if len(request.files.getlist('zipFile')) != 1:
-        abort(400, 'A single file is required')
-
-    else:
+    for image in request.files.getlist('images'):
         # 2. Save the zip file
-        zip_file = request.files.getlist('zipFile')[0]
-        filename = secure_filename(zip_file.filename)
-        zip_file.save(os.path.join(request_dir, filename))
+        filename = secure_filename(image.filename)
+        image_path = os.path.join(request_dir, filename)
+        image_paths.append(image_path)
+        image.save(image_path)
 
     # 3. run
-    result = Stork().predict_zip_file(
-        zip_file_path = os.path.join(request_dir, filename))
+    result = Stork().predict(image_paths, maternal_age, request_id, request_dir)
     
     schema = StorkResult()
     json_response = schema.dump(result)

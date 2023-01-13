@@ -29,34 +29,66 @@
                         <i class="material-icons left">add</i>Add Images
                     </label>
                     <input type="file" id="file-select" multiple="multiple" accept="image/jpeg, image/png, image/tiff" class="hidden" />
-                    <div id="error-message" class="error-message hidden">You can add up to 7 images</div>
+                    <div id="error-message" class="error-message hidden">You can add up to 7 images</div> <!-- ADD HOW MANY IMAGES ARE AT REQUIRED HERE-->
                 </div >
 
-                <div class="margin10  inline-block align-top">
+                <div class="margin10 inline-block">
                     <a href="assets/images/test-images.zip" class="btn" id="download-test-images">
                         <i class="material-icons left">cloud_download</i>
                         Download test images
                     </a>
                 </div>
 
-                <div id="clear-all-button" class="btn disabled inline-block margin10 float-right">Clear All</div>
+                <div class="margin10 inline-block float-right" 
+                     style="height: 36px; position: relative; top: -20px;">
+                    <div class="input-field inline-block">
+                        <label for="maternal-age">Age</label>
+                        <input id="maternal-age" name="maternal-age" type="number" min="10" max="99" >
+                    </div>
 
+                    <div id="submit-btn"
+                        class="btn inline-block margin10 disabled">
+                        Submit
+                    </div>                
+
+                    <div id="clear-all-button" class="btn disabled inline-block">Clear All</div>
+                </div>
+            
             </div>
+            
+            <div class="loader hidden"></div>
+
+            <div id="results-placeholder" class="margin10 hidden">
+                <h5>Results</h5>
+                <div id="lrEupAnu-results" class="result-text inline-block"><h6>lrEUP-Anu</h6>
+                    <div>Blastocyst Score: <span class="blastocystScore-text"></span></div>
+                    <div>Euploid Prediction: <span class="euploidPrediction-text"></span></div>
+                    <div>Euploid Probablity: <span class="euploidProbablity-text"></span></div>
+                    <div>Expansion Score: <span class="expansionScore-text"></span></div>
+                    <div>ICM Score: <span class="icmScore-text"></span></div>
+                    <div>Trophectoderm Score: <span class="trophectodermScore-text"></span></div>
+                </div>
+                <div id="lrEupCxa-results" class="result-text inline-block"><h6>lrEUP-Cxa</h6>
+                    <div>Blastocyst Score: <span class="blastocystScore-text"></span></div>
+                    <div>Euploid Prediction: <span class="euploidPrediction-text"></span></div>
+                    <div>Euploid Probablity: <span class="euploidProbablity-text"></span></div>
+                    <div>Expansion Score: <span class="expansionScore-text"></span></div>
+                    <div>ICM Score: <span class="icmScore-text"></span></div>
+                    <div>Trophectoderm Score: <span class="trophectodermScore-text"></span></div>
+                </div>
+            </div>
+
             <div>
                 <div id="imageCards-placeholder" class="margin10" ondrop="dropHandler(event);">
                 <div class="center info-text">Drag and drop your images here</div>
                 </div>
             </div>
 
-
-            <div id="results-placeholder" class="margin10 hidden">
-                Major vote result: <strong></strong>
-            </div>
             <div class="push"></div>
         </div>
         <footer>
             <div>Copyright © <span id="year"></span> Englander Institute for Precision Medicine</div>
-            <div>Stork A - Version 1.0.0</div>
+            <div>Stork V - Version 1.0.0</div>
             <img alt="logo" class="footer-logo" src="assets/LOGO_ENGLANDER_2LINE_RGB.png">
          </footer>
 

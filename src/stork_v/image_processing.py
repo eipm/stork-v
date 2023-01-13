@@ -1,26 +1,31 @@
-from typing import Sequence
+from typing import Sequence, Tuple
 import cv2
 import pandas as pd
 import numpy as np
 import zipfile
 from tensorflow import keras
 import copy
-IMG_SIZE = 224
+
+from stork_v.dataclasses.stork_image import *
 
 # Function to create video
-def create_video(file_path, image_paths, num_frames_from_back=None):
-    frame = cv2.imread(image_paths[0])
+def create_video(
+    file_path: str,
+    images: Sequence[StorkImage],
+    num_frames_from_back=None):
+
+    frame = cv2.imread(images[0].path())
     height, width, layers = frame.shape
 
     video = cv2.VideoWriter(file_path, 0, 1, (width,height))
 
     if num_frames_from_back is None:
-        mod_images = image_paths
+        mod_images = images
     else:
-        mod_images = image_paths[len(image_paths) - num_frames_from_back:]
+        mod_images = images[len(images) - num_frames_from_back:]
 
     for image in mod_images:
-        video.write(cv2.imread(image))
+        video.write(cv2.imread(image.path()))
 
     cv2.destroyAllWindows()
     video.release()
@@ -40,15 +45,14 @@ def find_nearest(array, value):
     else:
         return -1
 
-def find_nearest_time(images: Sequence[str], intervals):
-    image_intervals = [float(image.split('_')[2]) for image in images] # we probably need a better way of capturing this info
+def find_nearest_time(image_intervals: Sequence[float], intervals):
     return [find_nearest(image_intervals, interval) for interval in intervals]
 
-def normalize_maternal_age(maternal_age: int):
+def normalize_maternal_age(maternal_age: float):
     return (maternal_age - 24) / (50 - 24)
 
 # Creating Dataframe for Populating Frame-Timepoint annotations and populating it with -1s
-def create_dataframe(images: Sequence[str], subject_name: str, focus = 0, maternal_age: int = 30) -> pd.DataFrame:
+def create_dataframe(image_intervals: Sequence[float], subject_name: str, maternal_age: float, focus = 0, ) -> pd.DataFrame:
     intial_stages = -1
     intervals = np.arange(0.0, 150.0, 0.5)
     data_dict = {}
@@ -57,7 +61,7 @@ def create_dataframe(images: Sequence[str], subject_name: str, focus = 0, matern
     df_stages = pd.DataFrame(data = data_dict, index=[0])
 
     # Running functions to get intervals
-    df_stages.loc[0] = find_nearest_time(images, intervals)
+    df_stages.loc[0] = find_nearest_time(image_intervals, intervals)
 
     # Populating other information required for model
     df_stages['SUBJECT_NO'] = subject_name
@@ -67,7 +71,7 @@ def create_dataframe(images: Sequence[str], subject_name: str, focus = 0, matern
 
 
 # #### Functions for Feature Extraction
-def build_feature_extractor(img_size=IMG_SIZE):
+def build_feature_extractor(img_size: int):
     feature_extractor = keras.applications.VGG16(
         weights="imagenet",
         include_top=False,
@@ -80,7 +84,6 @@ def build_feature_extractor(img_size=IMG_SIZE):
 
     outputs = feature_extractor(preprocessed)
     return keras.Model(inputs, outputs, name="feature_extractor")
-
 
 
 def crop_center_square(frame):
@@ -114,12 +117,12 @@ def crop_petri_dish(frame):
     else:
         return frame
 
-def load_video(file_path: str, max_frames=710, resize=(IMG_SIZE,IMG_SIZE)) -> np.ndarray:
+def load_video(file_path: str, max_frames: int, resize: Tuple[int, int]) -> np.ndarray:
     cap = cv2.VideoCapture(file_path)
     frames = []
-    width: float = None
-    height: float = None
-    should_resize: bool = None
+    width = None
+    height = None
+    should_resize = None
 
     try:
         while True:
