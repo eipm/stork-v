@@ -106,7 +106,7 @@ def predict():
         image.save(image_path)
 
     # 3. run
-    result = Stork().predict(image_paths, maternal_age, request_id, request_dir)
+    result = Stork().predict(image_paths, maternal_age, request_id, focus=0)
     
     schema = StorkResult()
     json_response = schema.dump(result)

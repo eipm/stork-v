@@ -8,28 +8,6 @@ import copy
 
 from stork_v.dataclasses.stork_image import *
 
-# Function to create video
-def create_video(
-    file_path: str,
-    images: Sequence[StorkImage],
-    num_frames_from_back=None):
-
-    frame = cv2.imread(images[0].path())
-    height, width, layers = frame.shape
-
-    video = cv2.VideoWriter(file_path, 0, 1, (width,height))
-
-    if num_frames_from_back is None:
-        mod_images = images
-    else:
-        mod_images = images[len(images) - num_frames_from_back:]
-
-    for image in mod_images:
-        video.write(cv2.imread(image.path()))
-
-    cv2.destroyAllWindows()
-    video.release()
-
 # Extract Zip file
 def extract_zip(file_path: str, target_directory: str) -> None:
     with zipfile.ZipFile(file_path, "r") as zip_ref:
@@ -52,20 +30,24 @@ def normalize_maternal_age(maternal_age: float):
     return (maternal_age - 24) / (50 - 24)
 
 # Creating Dataframe for Populating Frame-Timepoint annotations and populating it with -1s
-def create_dataframe(image_intervals: Sequence[float], subject_name: str, maternal_age: float, focus = 0, ) -> pd.DataFrame:
+def create_dataframe(
+    stork_images: Sequence[StorkImage],
+    subject_name: str,
+    maternal_age: float,
+    interval: int,
+    focus: int = 0) -> pd.DataFrame:
+    
+    image_intervals = list(map(lambda stork_image: stork_image.hour, stork_images))
     intial_stages = -1
-    intervals = np.arange(0.0, 150.0, 0.5)
-    data_dict = {}
-    for interval in intervals:
-        data_dict[str(interval)] = intial_stages
+    time_slots = np.arange(0.0, 150.0, interval)
+    data_dict = {str(time_slot): intial_stages for time_slot in time_slots}
     df_stages = pd.DataFrame(data = data_dict, index=[0])
 
     # Running functions to get intervals
-    df_stages.loc[0] = find_nearest_time(image_intervals, intervals)
+    df_stages.loc[0] = find_nearest_time(image_intervals, time_slots)
 
     # Populating other information required for model
     df_stages['SUBJECT_NO'] = subject_name
-    df_stages['VIDEO'] = df_stages['SUBJECT_NO'].astype(str) + "_" + str(focus) + ".avi"
     df_stages['AGE_AT_RET'] = normalize_maternal_age(maternal_age)
     return df_stages
 
@@ -116,41 +98,3 @@ def crop_petri_dish(frame):
         return result
     else:
         return frame
-
-def load_video(file_path: str, max_frames: int, resize: Tuple[int, int]) -> np.ndarray:
-    cap = cv2.VideoCapture(file_path)
-    frames = []
-    width = None
-    height = None
-    should_resize = None
-
-    try:
-        while True:
-            ret, frame = cap.read()
-            if width is None or height is None:
-                width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-                height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-            if not ret:
-                break
-            frame = crop_center_square(frame)
-
-            if should_resize is None:
-                should_resize = resize is not None and \
-                (width != resize[0] or height != resize[1])
-            
-            if should_resize:
-                frame = cv2.resize(frame, resize)
-
-            frame = frame[:, :, [2, 1, 0]]
-            frame = crop_petri_dish(frame)
-            frames.append(frame)
-
-            if len(frames) == max_frames:
-                break
-    finally:
-        cap.release()
-    return np.array(frames)
-
-
-
-
