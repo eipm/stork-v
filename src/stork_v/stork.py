@@ -12,17 +12,12 @@ from stork_v.dataclasses.stork_data import *
 from stork_v.dataclasses.stork_result import *
 from stork_v.dataclasses.stork_image import *
 
-# In case the zip file has more than 0-focus images, this function only gets the 0-focus images
-## Requires focus annotation (XXXX_0.jpg where 0 is indicative of 0 focus)
-
-
 class Stork:
     IMG_SIZE = 224
     MINIMUM_NUMBER_OF_IMAGES = 9
     MAX_SEQ_LENGTH = 710
     NUM_FEATURES = 512
     NUM_SAMPLES = 1 # only doing 1 video at a time right now
-    # Hour Criteria (FIXED)
     beg_hour = 96.0
     end_hour = 112.0
     interval = 2

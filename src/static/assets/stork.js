@@ -1,6 +1,7 @@
 // Env variables
 const begHour = 96.0
 const endHour = 112.0
+const interval = 2.0
 const baseApiUrl = 'api'
 // End Env variables
 
@@ -47,6 +48,15 @@ if (loginForm) {
         login(event);
     })
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    var elems = document.querySelectorAll('.modal');
+    var instances = M.Modal.init(elems, undefined);
+});
+document.addEventListener('DOMContentLoaded', function() {
+    var elems = document.querySelectorAll('.collapsible');
+    var instances = M.Collapsible.init(elems, undefined);
+});
 
 function getCookie(cookieName) {
     var name = cookieName + '=';
@@ -113,38 +123,83 @@ function postFormData(formData, baseApiUrl) {
 };
 
 function showResultData(data) {
+    let commmonResultsHaveBeenSet = false;
+    const commonResultElement = document.getElementById('common-results');
     Object.keys(data).forEach(resultName => {
         const resultElement = document.getElementById(`${resultName}-results`);
-        resultElement.getElementsByClassName('blastocystScore-text')[0].innerHTML = data[resultName].blastocystScore;
-        resultElement.getElementsByClassName('euploidPrediction-text')[0].innerHTML = data[resultName].euploidPrediction;
-        resultElement.getElementsByClassName('euploidProbablity-text')[0].innerHTML = data[resultName].euploidProbablity;
-        resultElement.getElementsByClassName('expansionScore-text')[0].innerHTML = data[resultName].expansionScore;
-        resultElement.getElementsByClassName('icmScore-text')[0].innerHTML = data[resultName].icmScore;
-        resultElement.getElementsByClassName('trophectodermScore-text')[0].innerHTML = data[resultName].trophectodermScore;
-    });
+        const goodPercentage = (data[resultName].euploidProbablity * 100).toFixed(2);
+        const poorPercentage = (100 - goodPercentage).toFixed(2);
 
-    resultsElement.classList.remove('hidden');
+        const bar = resultElement.getElementsByClassName('bar')[0];
+        const goodText = resultElement.getElementsByClassName('good-text')[0];
+        const poorText = resultElement.getElementsByClassName('poor-text')[0];
+        bar.setAttribute('style', `width:${goodPercentage}%;`);
+        goodText.innerHTML = `${goodPercentage}%`;
+        poorText.innerHTML = `${poorPercentage}%`;
+        if (data[resultName].euploidPrediction) {
+            resultElement.getElementsByClassName('good-result-text')[0].classList.remove('hidden');
+        } else {
+            resultElement.getElementsByClassName('poor-result-text')[0].classList.remove('hidden');
+        }
+
+        if (!commmonResultsHaveBeenSet) {
+            commonResultElement.getElementsByClassName('blastocystScore-text')[0].innerHTML = data[resultName].blastocystScore.toFixed(5);
+            commonResultElement.getElementsByClassName('expansionScore-text')[0].innerHTML = data[resultName].expansionScore.toFixed(5);
+            commonResultElement.getElementsByClassName('icmScore-text')[0].innerHTML = data[resultName].icmScore.toFixed(5);
+            commonResultElement.getElementsByClassName('trophectodermScore-text')[0].innerHTML = data[resultName].trophectodermScore.toFixed(5);
+            commmonResultsHaveBeenSet = true;
+        }
+    });
 }
+
+function clearResultData() {
+    [...document.getElementsByClassName('bar')].forEach(e => e.setAttribute('style', 'width:0%'));
+    ['good-result-text','poor-result-text'].forEach(className =>
+        [...document.getElementsByClassName(className)].forEach(e => e.classList.add('hidden')));
+    ['good-text','poor-text','blastocystScore-text','expansionScore-text','icmScore-text','trophectodermScore-text'].forEach(className =>
+        [...document.getElementsByClassName(className)].forEach(e => e.innerHTML = '<span class="new badge" data-badge-caption="">N/A</span>'));
+}
+
+function filterClosestHours(objects) {
+    //sort the list by the hour property  objects.sort((a, b) => a.hour - b.hour);
+    let closestObjects = {};
+    for (let obj of objects) {
+      let hour = obj.hour;
+      let closestHour = Array.from({length: minImagesRequired}, (_, i) => 96 + i*2).reduce((a, b) => Math.abs(b - hour) < Math.abs(a - hour) ? b : a);
+      if (Math.abs(closestHour - hour) < 2) {
+        if (!closestObjects[closestHour]) {
+          closestObjects[closestHour] = obj;
+        } else {
+          if (Math.abs(closestObjects[closestHour].hour - closestHour) > Math.abs(hour - closestHour)) {
+            closestObjects[closestHour] = obj;
+          }
+        }
+      }
+    }
+    return Object.values(closestObjects);
+  }
 
 function removeImageCard(imageName) {
     const card = document.getElementById(`image-card-${imageName}`);
     imagesPlaceholder.removeChild(card);
     delete currentImages[imageName];
+
     imageRemovedUpdateUI();
+    updateSelectedImages();
+    updateSubmitBtn();
 };
 
 function imageRemovedUpdateUI() {
     if (Object.keys(currentImages).length === 0) {
         clearAllButton.classList.add('disabled');
     }
-    
-    updateSubmitBtn();
 };
 
 function clearAllImageCards() {
     Object.keys(currentImages).map(image => {
         removeImageCard(image);
     });
+    clearResultData();
 };
 
 function createImageUIFromFile(file, imagesPlaceholder) {
@@ -163,7 +218,9 @@ function createImageUIFromFile(file, imagesPlaceholder) {
             </div>
             <div class="card-file-name">${file.name}</div>
 
-            
+            <div class="selected-image-mark hidden">
+                <i class="material-icons">check_circle</i>
+            </div>
             <div class="delete-image-button" onclick="removeImageCard('${file.name}')">
                 <i class="material-icons">clear</i>
             </div>
@@ -189,18 +246,61 @@ function submit() {
 
     submitBtn.setAttribute('disabled', 'disabled');
     maternalAgeInput.setAttribute('disabled', 'disabled');
-    const filesToBeUploaded = Object.keys(currentImages).map(x => currentImages[x]);
+    const filesToBeUploaded = selectedImages.map(x => currentImages[x]);
     postFormData(getFormData(filesToBeUploaded, data), baseApiUrl);
 };
 
+function updateSelectedImages() {
+    if (currentImages && Object.keys(currentImages).length) {
+        const objects = Object.keys(currentImages).map(filename => {
+            let hour = null;
+            let focus = null;
+            const filenameParts = filename.split('.').slice(0,-1).join('.').split('_');
+            
+            if (filenameParts && filenameParts.length >= 5) {
+                hour = filenameParts[2];
+                focus = filenameParts[4];
+            }
+
+            return { filename, hour, focus };
+        }).filter(x => x.focus == 0);
+
+        selectedImages = filterClosestHours(objects).map(x => x.filename);
+    }
+    updateSelectedImagesUI();
+}
+
+function updateSelectedImagesUI() {
+    Object.keys(currentImages).forEach(filename => {
+        const element =  document.querySelector(`#image-card-${CSS.escape(filename)} .selected-image-mark`);
+        if (selectedImages.includes(filename)) {
+            element.classList.remove('hidden');
+        } else {
+            element.classList.add('hidden');
+        }
+    });
+
+
+    selectedImagesElement.innerHTML = selectedImages.map(x => {
+        return `<div>${x}</div>`;
+    }).join('');
+}
+
 function updateSubmitBtn() {
-    if (maternalAge && currentImages && 
-        Object.keys(currentImages).length > minImagesRequired) {
-            submitBtn.classList.remove('disabled');
+    if (maternalAge && selectedImages.length >= minImagesRequired) {
+        submitBtn.classList.remove('disabled');
     } else {
         submitBtn.classList.add('disabled');
     }
 };
+
+function updateClearAllButton() {
+    if (currentImages &&  Object.keys(currentImages).length) {
+        clearAllButton.classList.remove('disabled');
+    } else {
+        clearAllButton.classList.add('disabled');
+    }
+}
 
 function handleFiles(files) {
     if (files && files.length) {
@@ -209,11 +309,12 @@ function handleFiles(files) {
 
             if (isAnImage(file)) {
                 currentImages[file.name] = file;
-                clearAllButton.classList.remove('disabled');
                 createImageUIFromFile(file, imagesPlaceholder);
             }
         }
         
+        updateSelectedImages();
+        updateClearAllButton();
         updateSubmitBtn();
     }
 };
@@ -227,10 +328,13 @@ function preventDefaults (e) {
     e.stopPropagation();
 }
 
+clearResultData();
 const form = document.getElementById('file-form');
 const currentImages = {};
+let selectedImages = [];
 let maternalAge = null;
-const minImagesRequired = 2 * (endHour - begHour);
+const minImagesRequired = ((endHour - begHour) / interval) + 1;
+const selectedImagesElement = document.querySelector('#selected-images .collapsible-body');
 const resultsElement = document.getElementById('results-placeholder');
 const fileSelect = document.getElementById('file-select');
 if (fileSelect) {

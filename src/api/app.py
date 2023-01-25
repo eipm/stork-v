@@ -88,8 +88,8 @@ def predict():
     if 'images' not in request.files:
         abort(400, 'No images part')
 
-    if len(request.files.getlist('images')) < 10:
-        abort(400, 'A single file is required')
+    if len(request.files.getlist('images')) < 9:
+        abort(400, 'At least 9 files are required')
         
     # 1. Create request directory
     request_id = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
