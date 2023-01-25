@@ -214,3 +214,8 @@ footer {
 #selected-images {
     margin-top:60px;
 }
+
+:not(pre)>code[class*="language-"] {
+    padding: 0.1em 0.25em;
+    border: solid 1px rgba(51,51,51,0.12);
+}
