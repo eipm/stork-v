@@ -28,9 +28,41 @@
                     <label for="file-select" id="add-images-button" class="btn">
                         <i class="material-icons left">add</i>Add Images
                     </label>
-                    <input type="file" id="file-select" multiple="multiple" accept="image/jpeg, image/png, image/tiff" class="hidden" />
-                    <div id="error-message" class="error-message hidden">You can add up to 7 images</div> <!-- ADD HOW MANY IMAGES ARE AT REQUIRED HERE-->
+                    <input type="file" id="file-select" multiple="multiple" accept="image/jpeg" class="hidden" />
                 </div >
+
+                <!-- Modal Trigger -->
+                <a class="waves-effect waves-light btn modal-trigger" href="#modal-instructions">Instructions</a>
+                <!-- Modal Structure -->
+                <div id="modal-instructions" class="modal">
+                    <div class="modal-content">
+                    <h5>Instructions</h5>
+                    <div class="instructions margin10">
+                            <ul>
+                                <li>Images be considered for selection should have:
+                                    <ul>
+                                        <li>the namimg convetion: <code class="language-markup">*_*_{hour}_*_{focus}.jpg</code></li>
+                                        <li>focus 0 and</li>
+                                        <li>hour between 96-112 (+/-2)</li>
+                                    </ul>
+                                </li>
+                                <li>9 images have to be seleted (1 per 2 hour timeslot).</li>
+                                <li>Age is the maternal age and is required.</li>
+                            </ul>
+                            
+                            <p>
+                                NOTE: Selected images will have a check mark appearing on top of them.
+                            </p>
+                            <p>
+                                NOTE: To use the test images, download the zip file by clicking a the <code>DOWNLOAD TEST IMAGES</code> button,
+                                extract it, and then drag and drop them in the dran and drop area. Set your age and then click on Submit.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                    <a class="modal-close waves-effect btn-flat">Close</a>
+                    </div>
+                </div>
 
                 <div class="margin10 inline-block">
                     <a href="assets/images/test-images.zip" class="btn" id="download-test-images">
@@ -38,46 +70,81 @@
                         Download test images
                     </a>
                 </div>
-
-                <div class="margin10 inline-block float-right" 
-                     style="height: 36px; position: relative; top: -20px;">
-                    <div class="input-field inline-block">
-                        <label for="maternal-age">Age</label>
-                        <input id="maternal-age" name="maternal-age" type="number" min="10" max="99" >
-                    </div>
-
-                    <div id="submit-btn"
-                        class="btn inline-block margin10 disabled">
-                        Submit
-                    </div>                
-
-                    <div id="clear-all-button" class="btn disabled inline-block">Clear All</div>
-                </div>
-            
             </div>
             
             <div class="loader hidden"></div>
 
-            <div id="results-placeholder" class="margin10 hidden">
-                <h5>Results</h5>
-                <div id="lrEupAnu-results" class="result-text inline-block"><h6>lrEUP-Anu</h6>
-                    <div>Blastocyst Score: <span class="blastocystScore-text"></span></div>
-                    <div>Euploid Prediction: <span class="euploidPrediction-text"></span></div>
-                    <div>Euploid Probablity: <span class="euploidProbablity-text"></span></div>
-                    <div>Expansion Score: <span class="expansionScore-text"></span></div>
-                    <div>ICM Score: <span class="icmScore-text"></span></div>
-                    <div>Trophectoderm Score: <span class="trophectodermScore-text"></span></div>
-                </div>
-                <div id="lrEupCxa-results" class="result-text inline-block"><h6>lrEUP-Cxa</h6>
-                    <div>Blastocyst Score: <span class="blastocystScore-text"></span></div>
-                    <div>Euploid Prediction: <span class="euploidPrediction-text"></span></div>
-                    <div>Euploid Probablity: <span class="euploidProbablity-text"></span></div>
-                    <div>Expansion Score: <span class="expansionScore-text"></span></div>
-                    <div>ICM Score: <span class="icmScore-text"></span></div>
-                    <div>Trophectoderm Score: <span class="trophectodermScore-text"></span></div>
-                </div>
-            </div>
+            <div class="float-right">
+                <div class="margin10 inline-block float-right" 
+                     style="height: 36px; position: relative; top: -20px;">
+                    <div class="input-field inline-block">
+                        <label for="maternal-age">Age</label>
+                        <input id="maternal-age" name="maternal-age" type="number" min="20" max="55" >
+                    </div>
 
+                    <div id="submit-btn"
+                        class="btn tooltipped inline-block margin10 disabled">
+                        Submit
+                    </div>
+
+                    <div id="clear-all-button" class="btn disabled inline-block">Clear All</div>
+                </div>
+
+                <div id="selected-images" class="margin10">
+                    <ul class="collapsible">
+                        <li>
+                            <div class="collapsible-header">Selected Images</div>
+                            <div class="collapsible-body"></div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div id="results-placeholder" class="margin10 results">
+
+                    <h5>Results</h5>
+                    <div id="lrEupAnu-results">
+                        <div class="result-text">Abnormal/Normal:
+                            <strong class="good-result-text hidden">Euploid</strong>
+                            <strong class="poor-result-text hidden">Aneuploid</strong>
+                        </div>
+                        <div class="poor">
+                            <div class="good bar"></div>
+                        </div>
+                        <div class="legend-item"><div class="legend-marker good"></div>Euploid: <span class="good-text"></span></div>
+                        <div class="legend-item"><div class="legend-marker poor"></div>Aneuploid: <span class="poor-text"></span></div>
+                    </div>
+                    <div id="lrEupCxa-results">
+                        <div class="result-text">CxA-EUP:
+                            <strong class="good-result-text hidden">Euploid</strong>
+                            <strong class="poor-result-text hidden">Complex Aneuploid</strong>
+                        </div>
+                        <div class="poor">
+                            <div class="good bar"></div>
+                        </div>
+                        <div class="legend-item"><div class="legend-marker good"></div>Euploid: <span class="good-text"></span></div>
+                        <div class="legend-item"><div class="legend-marker poor"></div>Complex Aneuploid: <span class="poor-text"></span></div>
+                    </div>
+                    <table id="common-results">
+                        <tr>
+                            <td class="inline-block">Blastocyst Score:</td>
+                            <td class="blastocystScore-text"></td>
+                        </tr>
+                        <tr>
+                            <td class="inline-block">Expansion Score:</td>
+                            <td class="expansionScore-text"></td>
+                        </tr>
+                        <tr>
+                            <td class="inline-block">ICM Score:</td>
+                            <td class="icmScore-text"></td>
+                        </tr>
+                        <tr>
+                            <td class="inline-block">Trophectoderm Score:</td>
+                            <td class="trophectodermScore-text"></span></td>
+                        </tr>
+                    </table>
+                </div>
+
+            </div>
             <div>
                 <div id="imageCards-placeholder" class="margin10" ondrop="dropHandler(event);">
                 <div class="center info-text">Drag and drop your images here</div>
@@ -92,6 +159,7 @@
             <img alt="logo" class="footer-logo" src="assets/LOGO_ENGLANDER_2LINE_RGB.png">
          </footer>
 
+        <script type="text/javascript" src="assets/materialize.min.js"></script>
         <script type="text/javascript" src="assets/stork.js"></script>
     </body>
 </html>

@@ -1,6 +1,3 @@
-import pathlib
-import shutil
-import uuid
 import pandas as pd
 import numpy as np
 import os
@@ -14,23 +11,33 @@ from stork_v.dataclasses.experiment_result import *
 from stork_v.dataclasses.stork_data import *
 from stork_v.dataclasses.stork_result import *
 from stork_v.dataclasses.stork_image import *
-from os.path import exists
-
-# In case the zip file has more than 0-focus images, this function only gets the 0-focus images
-## Requires focus annotation (XXXX_0.jpg where 0 is indicative of 0 focus)
-
 
 class Stork:
     IMG_SIZE = 224
-    MINIMUM_NUMBER_OF_IMAGES = 10
+    MINIMUM_NUMBER_OF_IMAGES = 9
     MAX_SEQ_LENGTH = 710
     NUM_FEATURES = 512
     NUM_SAMPLES = 1 # only doing 1 video at a time right now
-    # Hour Criteria (FIXED)
     beg_hour = 96.0
     end_hour = 112.0
+    interval = 2
 
-    def create_image_list(self, image_paths: Sequence[str]) -> List[StorkImage]:
+    def filter_closest_hours(self, stork_images: List[StorkImage], range: range) -> List[StorkImage]:
+        #sort the list by the hour property
+        sorted_objects = sorted(stork_images, key=lambda x: x.hour)
+        closest_objects = {}
+        for obj in sorted_objects:
+            hour = obj.hour
+            closest_hour = min(range, key=lambda x: abs(x - hour))
+            if abs(closest_hour - hour) < 2:
+                if closest_hour not in closest_objects:
+                    closest_objects[closest_hour] = obj
+                else:
+                    if abs(closest_objects[closest_hour].hour - closest_hour) > abs(hour - closest_hour):
+                        closest_objects[closest_hour] = obj
+        return list(closest_objects.values())
+
+    def create_image_list(self, image_paths: Sequence[str], focus) -> List[StorkImage]:
         stork_images = []
         for image_path in image_paths:
             filename = os.path.basename(image_path)
@@ -39,64 +46,60 @@ class Stork:
                 continue
             
             # can raise exception if image filename is not in the correct format    
-            hour = float(filename_no_extension_split[2])
-            focus =  int(filename_no_extension_split[4]) 
+            image_hour = float(filename_no_extension_split[2])
+            image_focus =  int(filename_no_extension_split[4]) 
 
-            if focus == 0 and self.beg_hour - 1 < hour < self.end_hour + 1:
+            if focus == image_focus and self.beg_hour - 2 < image_hour < self.end_hour + 2:
                 stork_images.append(
                     StorkImage(
-                        focus=focus,
-                        hour=hour,
+                        focus=image_focus,
+                        hour=image_hour,
                         filename=filename,
                         directory=os.path.dirname(image_path)
                         )
                     )
+            stork_images = self.filter_closest_hours(stork_images, range(int(self.beg_hour), int(self.end_hour + self.interval), self.interval))
         return stork_images
 
+    # focus 0 is required
     def predict(
         self,
         image_paths: List[str],
         maternal_age: float,
         subject_no: str,
-        temp_directory: str,
-        focus = 0) -> StorkResult:
+        focus: int) -> StorkResult:
         
-        stork_images = self.create_image_list(image_paths)
+        stork_images = self.create_image_list(image_paths, focus)
         stork_images.sort(key=lambda x: x.hour)
 
+        # Checking if there is at minimum 9 images in the input
         if len(stork_images) < self.MINIMUM_NUMBER_OF_IMAGES:
             raise ValueError("Not enough images provided")
         
-        video_name = "video_" + str(focus) + '.avi'
-        video_path = os.path.join(temp_directory, video_name)
-        # Checking if there is at minimum 10 images in the input
-
         current_file_dir = os.path.dirname(os.path.realpath(__file__))
-        temp_video_dir = os.path.join(current_file_dir, '..', 'temp', str(uuid.uuid4()))
-        temp_video_path = os.path.join(temp_video_dir, video_name)
-        pathlib.Path(os.path.dirname(temp_video_path)).mkdir(parents=True, exist_ok=True)
-                
-        create_video(temp_video_path, stork_images, num_frames_from_back=None)
-        shutil.copy(temp_video_path, video_path)
-        shutil.rmtree(temp_video_dir)
-        # ### Feature Extraction for Model Input
-
-        # #### Script for Feature Extraction
-        # Reads in video and then passes the frames through a pre-trained feature extactor to get features for each frame
-
-        # Creating Dataframe
-        image_intervals = list(map(lambda stork_image: stork_image.hour, stork_images))
     
-        df_stages = create_dataframe(image_intervals, subject_no, maternal_age)
+        df_stages = create_dataframe(stork_images, subject_no, maternal_age, self.interval)
 
-    #     return self.predict_video(video_path, df_stages)
+        images = []
+        resize = (self.IMG_SIZE, self.IMG_SIZE)
+        image = cv2.imread(stork_images[0].path())
+        height, width, layers = image.shape
+        should_resize = resize is not None and \
+            width != resize[0] or height != resize[1]
+            
+        for stork_image in stork_images:
+            image = cv2.imread(stork_image.path())
 
+            image = crop_center_square(image)
+            if should_resize:
+                image = cv2.resize(image, resize)
+            image = image[:, :, [2, 1, 0]]
+            image = crop_petri_dish(image)
+            
+            images.append(image)
 
-    # def predict_video(self, video_path: str, df_stages: pd.DataFrame) -> StorkResult:
-        if not exists(video_path): 
-            raise ValueError("no file can be found")
-
-        frames = load_video(video_path, self.MAX_SEQ_LENGTH, (self.IMG_SIZE, self.IMG_SIZE))
+        frames = np.array(images)
+        
         # Frames shape: (num_frames, height, width, color channels)
         frames = frames[None, ...]
         # Frames shape: (extra_batch_dim, num_frames, height, width, color channels)
@@ -181,9 +184,8 @@ class Stork:
         X = np.array(data.features)
         X_mask = np.array(data.masks)
 
-        interval = 4
-        X = X[:, 0::interval, :]
-        X_mask = X_mask[:, 0::interval]
+        X = X[:, 0::1, :]
+        X_mask = X_mask[:, 0::1]
 
         print("Shape of Input: " + str(X.shape))
 
@@ -210,11 +212,10 @@ class Stork:
     def predict_zip_file(
         self,
         zip_file_path: str,
-        images_folder_path_in_zip: str = '',
-        focus = 0
-        ) -> StorkResult:
+        maternal_age: float,
+        focus: int,
+        images_folder_path_in_zip: str = '') -> StorkResult:
         
-        # Creating video from zip file
         zip_file_name = os.path.basename(zip_file_path)
         zip_file_name_without_extension = os.path.splitext(zip_file_name)[0]
 
@@ -223,7 +224,7 @@ class Stork:
             zip_file_name_without_extension)
 
         image_paths = self.get_images_from_zip(zip_file_path, target_directory, images_folder_path_in_zip)
-        return self.predict(image_paths, maternal_age=30, subject_no=zip_file_name, temp_directory=target_directory, focus=0)
+        return self.predict(image_paths, maternal_age, zip_file_name, focus)
         
     def get_images_from_zip(
         self,

@@ -88,8 +88,8 @@ def predict():
     if 'images' not in request.files:
         abort(400, 'No images part')
 
-    if len(request.files.getlist('images')) < 10:
-        abort(400, 'A single file is required')
+    if len(request.files.getlist('images')) < 9:
+        abort(400, 'At least 9 files are required')
         
     # 1. Create request directory
     request_id = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
@@ -106,7 +106,7 @@ def predict():
         image.save(image_path)
 
     # 3. run
-    result = Stork().predict(image_paths, maternal_age, request_id, request_dir)
+    result = Stork().predict(image_paths, maternal_age, request_id, focus=0)
     
     schema = StorkResult()
     json_response = schema.dump(result)
