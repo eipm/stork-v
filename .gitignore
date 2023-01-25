@@ -133,5 +133,6 @@ dmypy.json
 
 # zip and avi files
 *.zip
+!src/static/assets/images/test-images.zip
 *.avi
 **/data/**
