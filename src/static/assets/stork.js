@@ -1,8 +1,10 @@
 // Env variables
-const begHour = 96.0
-const endHour = 112.0
-const interval = 2.0
-const baseApiUrl = 'api'
+const begHour = 96.0;
+const endHour = 112.0;
+const interval = 2.0;
+const baseApiUrl = 'api';
+const minMaternalAge = 20;
+const maxMaternalAge = 55;
 // End Env variables
 
 let token = getCookie('stork-auth');
@@ -287,7 +289,8 @@ function updateSelectedImagesUI() {
 }
 
 function updateSubmitBtn() {
-    if (maternalAge && selectedImages.length >= minImagesRequired) {
+    if (maternalAge && minMaternalAge <= maternalAge && maternalAge <= maxMaternalAge
+        && selectedImages.length >= minImagesRequired) {
         submitBtn.classList.remove('disabled');
     } else {
         submitBtn.classList.add('disabled');
