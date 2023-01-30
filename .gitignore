@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Model files
+*Model
+
+# zip and avi files
+*.zip
+!src/static/assets/images/test-images.zip
+*.avi
+**/data/**
